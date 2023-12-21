@@ -1,2 +1,4 @@
-# sp-to-yt-cli
-Example golang project to turn Spotify flavored links into Youtube links
+# melody
+Example golang project to do things with Spotify API
+
+**WIP**
