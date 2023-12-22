@@ -45,7 +45,7 @@ func InitEnvConfigs(v string) {
 // viper.SetEnvPrefix("MELODY")
 // viper.AutomaticEnv()
 
-// // Viper unmarshals the loaded env varialbes into the struct
+// Viper unmarshals the loaded env varialbes into the struct
 // if err := viper.Unmarshal(&config); err != nil {
 // 	log.Fatal(err)
 // }
