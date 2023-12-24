@@ -4,42 +4,54 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
+	"time"
 
 	"github.com/alecthomas/kong"
-	"github.com/ayberktandogan/melody/internal/spotify"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
 
-type UserConfig struct {
-	Spotify spotify.AccessTokenResponse
+type userConfig struct {
+	Spotify oauth2.Token
 }
 
-const userConfigPath = "~/.config/melody"
+const userConfigFolder = "~/.config/melody"
+const userConfigPath = userConfigFolder + "/config"
 
-var defaultUserConfig = UserConfig{
-	Spotify: spotify.AccessTokenResponse{
+var defaultUserConfig = &userConfig{
+	Spotify: oauth2.Token{
 		RefreshToken: "",
 		AccessToken:  "",
-		Scope:        "",
-		ExpiresIn:    0,
+		Expiry:       time.Now(),
 		TokenType:    "",
 	},
 }
 
-func LoadUserConfig() (UserConfig, error) {
-	configFile := filepath.Join(userConfigPath, "config")
+var UserConfig = &userConfig{}
 
+func LoadUserConfig() (userConfig, error) {
 	createDirIfNotExists()
-	createFileIfNotExists(configFile)
+	createFileIfNotExists(userConfigPath)
 
-	config := readFromFile(configFile)
+	config := readFromFile(userConfigPath)
 
-	return config, nil
+	UserConfig = &config
+
+	return *UserConfig, nil
+}
+
+func SaveUserConfig() error {
+	err := writeToFile(userConfigPath, UserConfig)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+
+	return nil
 }
 
 func createDirIfNotExists() {
-	err := os.MkdirAll(kong.ExpandPath(userConfigPath), os.ModePerm)
+	err := os.MkdirAll(kong.ExpandPath(userConfigFolder), os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
@@ -54,22 +66,12 @@ func createFileIfNotExists(filePath string) {
 	}
 
 	if s, _ := f.Stat(); s.Size() == 0 {
-		c, err := yaml.Marshal(defaultUserConfig)
-		if err != nil {
-			log.Fatal(err)
-			panic(err)
-		}
-
-		b, ferr := f.Write(c)
-		if ferr != nil {
-			log.Fatal(ferr)
-			panic(ferr)
-		}
-		fmt.Println(b)
+		f.Close()
+		writeToFile(filePath, defaultUserConfig)
 	}
 }
 
-func readFromFile(filePath string) (userConfig UserConfig) {
+func readFromFile(filePath string) (userConfig userConfig) {
 	f, err := os.ReadFile(kong.ExpandPath(filePath))
 	if err != nil {
 		log.Fatal(err)
@@ -83,4 +85,24 @@ func readFromFile(filePath string) (userConfig UserConfig) {
 	}
 
 	return
+}
+
+func writeToFile(filePath string, d any) error {
+	f, err := os.OpenFile(kong.ExpandPath(filePath), os.O_WRONLY, 0666)
+
+	c, err := yaml.Marshal(d)
+	fmt.Println(c)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
+
+	_, ferr := f.Write(c)
+	if ferr != nil {
+		log.Fatal(ferr)
+		panic(ferr)
+	}
+
+	f.Close()
+	return nil
 }

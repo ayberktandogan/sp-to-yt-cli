@@ -1,6 +1,8 @@
 package app
 
-import "github.com/alecthomas/kong"
+import (
+	"github.com/alecthomas/kong"
+)
 
 type cliInterface interface {
 	getVersion() kong.VersionFlag
