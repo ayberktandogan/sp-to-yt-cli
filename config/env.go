@@ -6,6 +6,7 @@ type Spotify struct {
 	TokenUrl     string
 	Scopes       []string
 	RedirectUri  string
+	BaseAPIUri   string
 }
 
 type System struct {
@@ -35,8 +36,9 @@ func loadEnvVariables() (config *EnvConfig) {
 			ClientId:     "b536e6ccfe114da181340c67e2ff4831",
 			AuthorizeUrl: "https://accounts.spotify.com/authorize",
 			TokenUrl:     "https://accounts.spotify.com/api/token",
-			Scopes:       make([]string, 0),
+			Scopes:       []string{"user-read-private", "user-read-email"},
 			RedirectUri:  "http://localhost:8080/auth/callback",
+			BaseAPIUri:   "https://api.spotify.com/v1",
 		},
 		System: System{
 			Port:        "8080",

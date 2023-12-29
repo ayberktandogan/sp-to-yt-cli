@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/ayberktandogan/melody/internal/spotify"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
@@ -34,6 +35,7 @@ func LoadUserConfig() (userConfig, error) {
 	createFileIfNotExists(userConfigPath)
 
 	config := readFromFile(userConfigPath)
+	refreshTokenIfNecessary(&config)
 
 	UserConfig = &config
 
@@ -91,7 +93,6 @@ func writeToFile(filePath string, d any) error {
 	f, err := os.OpenFile(kong.ExpandPath(filePath), os.O_WRONLY, 0666)
 
 	c, err := yaml.Marshal(d)
-	fmt.Println(c)
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
@@ -105,4 +106,22 @@ func writeToFile(filePath string, d any) error {
 
 	f.Close()
 	return nil
+}
+
+func refreshTokenIfNecessary(config *userConfig) {
+	if config.Spotify.Expiry.Before(time.Now()) { // expired so let's update it
+		fmt.Println("Token refresh start.")
+
+		sc := &spotify.SpotifyClient{}
+		res, err := sc.RefreshToken(&config.Spotify)
+		if err != nil {
+			panic(err)
+		}
+
+		config.Spotify = *res
+
+		writeToFile(userConfigPath, config)
+
+		fmt.Println("Token refresh finish.")
+	}
 }

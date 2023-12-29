@@ -47,6 +47,20 @@ func (s *SpotifyClient) Login() (*oauth2.Token, error) {
 	}
 }
 
+func (s *SpotifyClient) RefreshToken(token *oauth2.Token) (*oauth2.Token, error) {
+	ctx := context.Background()
+	conf := *&oauth2.Config{}
+	src := conf.TokenSource(ctx, token)
+	newToken, err := src.Token() // this actually goes and renews the tokens
+	if err != nil {
+		panic(err)
+	}
+	if newToken.AccessToken != token.AccessToken {
+		return newToken, nil
+	}
+	return token, nil
+}
+
 func requestAccessCode(ctx context.Context, conf *oauth2.Config, verifier string, code string) (*oauth2.Token, error) {
 	tok, err := conf.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {

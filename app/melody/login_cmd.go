@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ayberktandogan/melody/internal/spotify"
@@ -19,7 +18,6 @@ func (i *loginCmd) Run() error {
 	}
 
 	UserConfig.Spotify = *res
-	fmt.Println(res)
 	SaveUserConfig()
 
 	return nil
