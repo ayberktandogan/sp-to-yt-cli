@@ -1,14 +1,5 @@
 package spotify
 
-import (
-	"encoding/json"
-	"log"
-	"net/http"
-
-	"github.com/ayberktandogan/melody/config"
-	"golang.org/x/oauth2"
-)
-
 type explicitContent struct {
 	FilterEnabled bool `json:"filter_enabled"`
 	FilterLocked  bool `json:"filter_locked"`
@@ -29,6 +20,27 @@ type image struct {
 	Width  int    `json:"width"`
 }
 
+type restrictions struct {
+	Reason string `json:"reason"`
+}
+
+type album struct {
+	AlbumType            string                   `json:"album_type"`
+	TotalTracks          int                      `json:"total_tracks"`
+	AvailableMarkets     []string                 `json:"available_markets"`
+	ExternalUrls         externalUrls             `json:"external_urls"`
+	Href                 string                   `json:"href"`
+	Id                   string                   `json:"id"`
+	Images               []image                  `json:"images"`
+	Name                 string                   `json:"name"`
+	ReleaseDate          string                   `json:"release_date"`
+	ReleaseDatePrecision string                   `json:"release_date_precision"`
+	Restrictions         restrictions             `json:"restrictions"`
+	Type                 string                   `json:"type"`
+	Uri                  string                   `json:"uri"`
+	Artists              []simplifiedArtistObject `json:"artists"`
+}
+
 type SpotifyUser struct {
 	Country         string          `json:"country"`
 	DisplayName     string          `json:"display_name"`
@@ -44,27 +56,66 @@ type SpotifyUser struct {
 	Uri             string          `json:"uri"`
 }
 
-func (s *SpotifyClient) GetMe(uc oauth2.Token) (*SpotifyUser, error) {
-	req, err := http.NewRequest(http.MethodGet, config.Config.BaseAPIUri+"/me", nil)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+type simplifiedArtistObject struct {
+	ExternalUrls externalUrls `json:"external_urls"`
+	Href         string       `json:"href"`
+	Id           string       `json:"id"`
+	Name         string       `json:"name"`
+	Type         string       `json:"type"`
+	Uri          string       `json:"uri"`
+}
 
-	req.Header.Add("Authorization", "Bearer "+uc.AccessToken)
+type ArtistObject struct {
+	simplifiedArtistObject
+	Followers  followers `json:"followers"`
+	Genres     []string  `json:"genres"`
+	Images     []image   `json:"images"`
+	Popularity int       `json:"popularity"`
+}
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+type externalIds struct {
+	Isrc string `json:"isrc"`
+	Ean  string `json:"ean"`
+	Upc  string `json:"upc"`
+}
 
-	var d SpotifyUser
-	decoder := json.NewDecoder(res.Body)
-	if err := decoder.Decode(&d); err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+type TrackObject struct {
+	Album            album          `json:"album"`
+	Artists          []ArtistObject `json:"artists"`
+	AvailableMarkets []string       `json:"available_markets"`
+	DiscNumber       int            `json:"disc_number"`
+	DurationMs       int            `json:"duration_ms"`
+	Explicit         bool           `json:"explicit"`
+	ExternalIds      externalIds    `json:"external_ids"`
+	ExternalUrls     externalUrls   `json:"external_urls"`
+	Href             string         `json:"href"`
+	Id               string         `json:"id"`
+	IsPlayable       bool           `json:"is_playable"`
+	LinkedFrom       *TrackObject   `json:"linked_from"`
+	Restrictions     restrictions   `json:"restrictions"`
+	Name             string         `json:"name"`
+	Popularity       int            `json:"popularity"`
+	PreviewUrl       string         `json:"preview_url"`
+	TrackNumber      int            `json:"track_number"`
+	Type             string         `json:"type"`
+	Uri              string         `json:"uri"`
+	IsLocal          bool           `json:"is_local"`
+}
 
-	return &d, nil
+type SpotifyUserTopItems[K any] struct {
+	Href     string `json:"href"`
+	Limit    int    `json:"limit"`
+	Next     string `json:"next"`
+	Offset   int    `json:"offset"`
+	Previous string `json:"previous"`
+	Total    int    `json:"total"`
+	Items    []K    `json:"items"`
+}
+
+func (s *SpotifyClient[T]) GetMe() (*T, error) {
+	return s.Request("/me")
+}
+
+func (s *SpotifyClient[T]) GetUserTopItems(t string) (*T, error) {
+	return s.Request("/me/top/" + t)
 }

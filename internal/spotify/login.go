@@ -10,11 +10,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SpotifyClient struct {
-	AccessToken oauth2.Token
+type SpotifyClient[T any] struct {
+	Auth oauth2.Token
 }
 
-func (s *SpotifyClient) Login() (*oauth2.Token, error) {
+func (s *SpotifyClient[T]) Login() (*oauth2.Token, error) {
 	ctx := context.Background()
 
 	st := utils.StateGenerator()
@@ -47,7 +47,7 @@ func (s *SpotifyClient) Login() (*oauth2.Token, error) {
 	}
 }
 
-func (s *SpotifyClient) RefreshToken(token *oauth2.Token) (*oauth2.Token, error) {
+func (s *SpotifyClient[T]) RefreshToken(token *oauth2.Token) (*oauth2.Token, error) {
 	ctx := context.Background()
 	conf := *&oauth2.Config{}
 	src := conf.TokenSource(ctx, token)

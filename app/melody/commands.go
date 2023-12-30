@@ -12,9 +12,9 @@ type cliInterface interface {
 }
 
 type cliBase struct {
-	User    userCmd          `cmd:"" name:"user" short:"u" help:"User related requests"`
-	Login   loginCmd         `cmd:"" name:"login" short:"l" help:"Login to Spotify"`
-	Version kong.VersionFlag `name:"version" short:"v" help:"Show version"`
+	User    userCmd          `cmd:"" group:"request types" name:"user" short:"u" help:"User related commands"`
+	Login   loginCmd         `cmd:"" group:"auth" name:"login" short:"l" help:"Login to Spotify"`
+	Version kong.VersionFlag `name:"version" group:"global" short:"v" help:"Show version"`
 }
 
 var _ cliInterface = &cliBase{}

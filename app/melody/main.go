@@ -38,7 +38,8 @@ func Main() {
 			"version": config.Config.Version,
 		},
 		kong.HelpOptions{
-			Compact: true,
+			Compact:             true,
+			NoExpandSubcommands: true,
 		},
 	}
 	parser, err := kong.New(&cli, kongOptions...)

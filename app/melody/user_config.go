@@ -91,6 +91,10 @@ func readFromFile(filePath string) (userConfig userConfig) {
 
 func writeToFile(filePath string, d any) error {
 	f, err := os.OpenFile(kong.ExpandPath(filePath), os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+		panic(err)
+	}
 
 	c, err := yaml.Marshal(d)
 	if err != nil {
@@ -112,7 +116,7 @@ func refreshTokenIfNecessary(config *userConfig) {
 	if config.Spotify.Expiry.Before(time.Now()) { // expired so let's update it
 		fmt.Println("Token refresh start.")
 
-		sc := &spotify.SpotifyClient{}
+		sc := &spotify.SpotifyClient[oauth2.Token]{}
 		res, err := sc.RefreshToken(&config.Spotify)
 		if err != nil {
 			panic(err)
