@@ -2,23 +2,21 @@ package app
 
 import (
 	"log"
-
-	"github.com/ayberktandogan/melody/internal/spotify"
 )
 
 type loginCmd struct {
 }
 
-func (i *loginCmd) Run() error {
-	sc := spotify.SpotifyClient{}
-	res, err := sc.Login()
+func (i *loginCmd) Run(clients *Clients, userConfig *userConfig) error {
+	res, err := clients.Spotify.Login()
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 
-	UserConfig.Spotify = *res
-	SaveUserConfig()
+	clients.Spotify.Auth = *res
+	userConfig.Data.Spotify = *res
+	userConfig.SaveUserConfig()
 
 	return nil
 }

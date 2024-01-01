@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/alecthomas/kong"
@@ -19,14 +20,15 @@ type Clients struct {
 
 func Main() {
 	cli := cliBase{}
-	userConfig, err := LoadUserConfig()
-	if err != nil {
-		fmt.Println(fmt.Errorf("%w", err))
+	userConfig := &userConfig{}
+	if err := userConfig.LoadUserConfig(); err != nil {
+		log.Fatal(err)
+		return
 	}
 
 	clients := &Clients{
 		Spotify: &spotify.SpotifyClient{
-			Auth: userConfig.Spotify,
+			Auth: userConfig.Data.Spotify,
 		},
 	}
 
@@ -34,8 +36,8 @@ func Main() {
 		kong.UsageOnError(),
 		kong.Description(help),
 		kong.BindTo(cli, (*cliInterface)(nil)),
-		kong.Bind(userConfig),
 		kong.Bind(clients),
+		kong.Bind(userConfig),
 		kong.AutoGroup(func(parent kong.Visitable, flag *kong.Flag) *kong.Group {
 			node, ok := parent.(*kong.Command)
 			if !ok {

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"time"
@@ -8,17 +9,20 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/ayberktandogan/melody/internal/spotify"
 	"golang.org/x/oauth2"
-	"gopkg.in/yaml.v3"
 )
 
+type userConfigData struct {
+	Spotify oauth2.Token `json:"spotify"`
+}
+
 type userConfig struct {
-	Spotify oauth2.Token
+	Data userConfigData `json:"data"`
 }
 
 const userConfigFolder = "~/.config/melody"
 const userConfigPath = userConfigFolder + "/config"
 
-var defaultUserConfig = &userConfig{
+var defaultUserConfig = &userConfigData{
 	Spotify: oauth2.Token{
 		RefreshToken: "",
 		AccessToken:  "",
@@ -29,25 +33,32 @@ var defaultUserConfig = &userConfig{
 
 var UserConfig = &userConfig{}
 
-func LoadUserConfig() (userConfig, error) {
+func (u *userConfig) LoadUserConfig() error {
 	createDirIfNotExists()
 	createFileIfNotExists(userConfigPath)
 
-	config := readFromFile(userConfigPath)
-	refreshTokenIfNecessary(&config)
+	data := readFromFile(userConfigPath)
+	refreshTokenIfNecessary(u)
 
-	UserConfig = &config
+	u.Data = *data
 
-	return *UserConfig, nil
+	return nil
 }
 
-func SaveUserConfig() error {
-	err := writeToFile(userConfigPath, UserConfig)
+func (u *userConfig) SaveUserConfig() error {
+	err := writeToFile(userConfigPath, u.Data)
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
 
+	return nil
+}
+
+func (u *userConfig) DeleteUserConfig() error {
+	if err := deleteFile(userConfigPath); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -72,20 +83,21 @@ func createFileIfNotExists(filePath string) {
 	}
 }
 
-func readFromFile(filePath string) (userConfig userConfig) {
+func readFromFile(filePath string) *userConfigData {
 	f, err := os.ReadFile(kong.ExpandPath(filePath))
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
 	}
 
-	ferr := yaml.Unmarshal(f, &userConfig)
+	var d userConfigData
+
+	ferr := json.Unmarshal(f, &d)
 	if ferr != nil {
-		log.Fatal(ferr)
 		panic(ferr)
 	}
 
-	return
+	return &d
 }
 
 func writeToFile(filePath string, d any) error {
@@ -95,7 +107,7 @@ func writeToFile(filePath string, d any) error {
 		panic(err)
 	}
 
-	c, err := yaml.Marshal(d)
+	c, err := json.Marshal(d)
 	if err != nil {
 		log.Fatal(err)
 		panic(err)
@@ -119,17 +131,17 @@ func deleteFile(filePath string) error {
 }
 
 func refreshTokenIfNecessary(config *userConfig) {
-	if config.Spotify.Expiry.Before(time.Now()) {
+	if config.Data.Spotify.RefreshToken != "" && config.Data.Spotify.Expiry.Before(time.Now()) {
 		sc := &spotify.SpotifyClient{
-			Auth: config.Spotify,
+			Auth: config.Data.Spotify,
 		}
 
 		if err := sc.RefreshToken(); err != nil {
-			deleteFile(userConfigPath)
+			config.DeleteUserConfig()
 			panic(err)
 		}
 
-		config.Spotify = sc.Auth
+		config.Data.Spotify = sc.Auth
 
 		writeToFile(userConfigPath, config)
 	}
