@@ -1,5 +1,11 @@
 package spotify
 
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+)
+
 type explicitContent struct {
 	FilterEnabled bool `json:"filter_enabled"`
 	FilterLocked  bool `json:"filter_locked"`
@@ -42,16 +48,16 @@ type album struct {
 }
 
 type SpotifyUser struct {
-	Country         string          `json:"country"`
+	Country         string          `json:"country,omitempty"`
 	DisplayName     string          `json:"display_name"`
-	Email           string          `json:"email"`
-	ExplicitContent explicitContent `json:"explicit_content"`
+	Email           string          `json:"email,omitempty"`
+	ExplicitContent explicitContent `json:"explicit_content,omitempty"`
 	ExternalUrls    externalUrls    `json:"external_urls"`
 	Followers       followers       `json:"followers"`
 	Href            string          `json:"href"`
 	Id              string          `json:"id"`
 	Images          []image         `json:"images"`
-	Product         string          `json:"product"`
+	Product         string          `json:"product,omitempty"`
 	Type            string          `json:"type"`
 	Uri             string          `json:"uri"`
 }
@@ -112,10 +118,41 @@ type SpotifyUserTopItems[K any] struct {
 	Items    []K    `json:"items"`
 }
 
-func (s *SpotifyClient[T]) GetMe() (*T, error) {
-	return s.Request("/me")
+type SpotifyPlaylistFollowRequest struct {
+	Public bool `json:"public"`
 }
 
-func (s *SpotifyClient[T]) GetUserTopItems(t string) (*T, error) {
-	return s.Request("/me/top/" + t)
+type SpotifyEmptyResponse struct{}
+
+func (s *SpotifyClient) GetMe() (*SpotifyUser, *http.Response, error) {
+	return Request[SpotifyUser](s, http.MethodGet, "/me", nil)
+}
+
+func (s *SpotifyClient) GetUserTopArtists() (*SpotifyUserTopItems[ArtistObject], *http.Response, error) {
+	return Request[SpotifyUserTopItems[ArtistObject]](s, http.MethodGet, "/me/top/artists", nil)
+}
+
+func (s *SpotifyClient) GetUserTopTracks() (*SpotifyUserTopItems[TrackObject], *http.Response, error) {
+	return Request[SpotifyUserTopItems[TrackObject]](s, http.MethodGet, "/me/top/tracks", nil)
+}
+
+func (s *SpotifyClient) GetProfile(id string) (*SpotifyUser, *http.Response, error) {
+	return Request[SpotifyUser](s, http.MethodGet, "/users/"+id, nil)
+}
+
+func (s *SpotifyClient) FollowPlaylist(id string) (*SpotifyEmptyResponse, *http.Response, error) {
+	d := &SpotifyPlaylistFollowRequest{
+		Public: false,
+	}
+
+	enc, err := json.Marshal(d)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return Request[SpotifyEmptyResponse](s, http.MethodPut, "/playlists/"+id+"/followers", enc)
+}
+
+func (s *SpotifyClient) UnfollowPlaylist(id string) (*SpotifyEmptyResponse, *http.Response, error) {
+	return Request[SpotifyEmptyResponse](s, http.MethodDelete, "/playlists/"+id+"/followers", nil)
 }

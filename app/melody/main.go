@@ -6,11 +6,16 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/ayberktandogan/melody/config"
+	"github.com/ayberktandogan/melody/internal/spotify"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
 )
 
 const help = `♪ Melody is a CLI application for Spotify Music.`
+
+type Clients struct {
+	Spotify *spotify.SpotifyClient
+}
 
 func Main() {
 	cli := cliBase{}
@@ -19,11 +24,18 @@ func Main() {
 		fmt.Println(fmt.Errorf("%w", err))
 	}
 
+	clients := &Clients{
+		Spotify: &spotify.SpotifyClient{
+			Auth: userConfig.Spotify,
+		},
+	}
+
 	kongOptions := []kong.Option{
 		kong.UsageOnError(),
 		kong.Description(help),
 		kong.BindTo(cli, (*cliInterface)(nil)),
 		kong.Bind(userConfig),
+		kong.Bind(clients),
 		kong.AutoGroup(func(parent kong.Visitable, flag *kong.Flag) *kong.Group {
 			node, ok := parent.(*kong.Command)
 			if !ok {

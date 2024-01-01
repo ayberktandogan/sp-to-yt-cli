@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -112,20 +111,26 @@ func writeToFile(filePath string, d any) error {
 	return nil
 }
 
-func refreshTokenIfNecessary(config *userConfig) {
-	if config.Spotify.Expiry.Before(time.Now()) { // expired so let's update it
-		fmt.Println("Token refresh start.")
+func deleteFile(filePath string) error {
+	if err := os.Remove(kong.ExpandPath(filePath)); err != nil {
+		panic(err)
+	}
+	return nil
+}
 
-		sc := &spotify.SpotifyClient[oauth2.Token]{}
-		res, err := sc.RefreshToken(&config.Spotify)
-		if err != nil {
+func refreshTokenIfNecessary(config *userConfig) {
+	if config.Spotify.Expiry.Before(time.Now()) {
+		sc := &spotify.SpotifyClient{
+			Auth: config.Spotify,
+		}
+
+		if err := sc.RefreshToken(); err != nil {
+			deleteFile(userConfigPath)
 			panic(err)
 		}
 
-		config.Spotify = *res
+		config.Spotify = sc.Auth
 
 		writeToFile(userConfigPath, config)
-
-		fmt.Println("Token refresh finish.")
 	}
 }

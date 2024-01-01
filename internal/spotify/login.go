@@ -10,11 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SpotifyClient[T any] struct {
-	Auth oauth2.Token
-}
-
-func (s *SpotifyClient[T]) Login() (*oauth2.Token, error) {
+func (s *SpotifyClient) Login() (*oauth2.Token, error) {
 	ctx := context.Background()
 
 	st := utils.StateGenerator()
@@ -47,18 +43,33 @@ func (s *SpotifyClient[T]) Login() (*oauth2.Token, error) {
 	}
 }
 
-func (s *SpotifyClient[T]) RefreshToken(token *oauth2.Token) (*oauth2.Token, error) {
+func (s *SpotifyClient) RefreshToken() error {
 	ctx := context.Background()
-	conf := *&oauth2.Config{}
-	src := conf.TokenSource(ctx, token)
-	newToken, err := src.Token() // this actually goes and renews the tokens
+	conf := &oauth2.Config{
+		ClientID: config.Config.ClientId,
+		Scopes:   config.Config.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  config.Config.AuthorizeUrl,
+			TokenURL: config.Config.TokenUrl,
+		},
+		RedirectURL: config.Config.RedirectUri,
+	}
+
+	src := conf.TokenSource(ctx, &s.Auth)
+	newToken, err := src.Token()
 	if err != nil {
-		panic(err)
+		switch err.Error() {
+		case "oauth2: token expired and refresh token is not set":
+			fallthrough
+		case "oauth2: \"invalid_grant\" \"Refresh token revoked\"":
+			return nil
+		default:
+			return err
+		}
 	}
-	if newToken.AccessToken != token.AccessToken {
-		return newToken, nil
-	}
-	return token, nil
+
+	s.Auth = *newToken
+	return nil
 }
 
 func requestAccessCode(ctx context.Context, conf *oauth2.Config, verifier string, code string) (*oauth2.Token, error) {
