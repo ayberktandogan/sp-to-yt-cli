@@ -38,9 +38,9 @@ func (u *userConfig) LoadUserConfig() error {
 	createFileIfNotExists(userConfigPath)
 
 	data := readFromFile(userConfigPath)
-	refreshTokenIfNecessary(u)
-
 	u.Data = *data
+
+	refreshTokenIfNecessary(u)
 
 	return nil
 }
@@ -143,6 +143,6 @@ func refreshTokenIfNecessary(config *userConfig) {
 
 		config.Data.Spotify = sc.Auth
 
-		writeToFile(userConfigPath, config)
+		writeToFile(userConfigPath, config.Data)
 	}
 }

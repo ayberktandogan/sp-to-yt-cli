@@ -12,11 +12,13 @@ import (
 )
 
 type SpotifyClient struct {
-	Auth oauth2.Token
+	Auth        oauth2.Token
+	Body        []byte
+	QueryParams map[string]string
 }
 
-func Request[T any](s *SpotifyClient, method string, path string, body []byte) (*T, *http.Response, error) {
-	req, err := http.NewRequest(method, config.Config.BaseAPIUri+path, bytes.NewBuffer(body))
+func Request[T any](s *SpotifyClient, method string, path string) (*T, *http.Response, error) {
+	req, err := http.NewRequest(method, config.Config.BaseAPIUri+path, bytes.NewBuffer(s.Body))
 	if err != nil {
 		log.Fatal(err)
 		return nil, nil, err
@@ -42,4 +44,13 @@ func Request[T any](s *SpotifyClient, method string, path string, body []byte) (
 	}
 
 	return &d, res, nil
+}
+
+func ParseBody[K any](s *SpotifyClient, b *K) {
+	enc, err := json.Marshal(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s.Body = enc
 }
