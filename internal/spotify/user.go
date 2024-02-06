@@ -31,21 +31,21 @@ func (s *SpotifyClient) UnfollowPlaylist(id string) (*SpotifyEmptyResponse, *htt
 }
 
 func (s *SpotifyClient) GetFollowedArtists() (*SpotifyFollowedArtistsResponse[ArtistObject], *http.Response, error) {
-	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodGet, "/me/following?type=artist")
+	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodGet, "/me/following")
 }
 
-func (s *SpotifyClient) FollowUsersOrArtists() (*SpotifyFollowedArtistsResponse[ArtistObject], *http.Response, error) {
-	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodPut, "/me/following")
+func (s *SpotifyClient) FollowUsersOrArtists() (*SpotifyEmptyResponse, *http.Response, error) {
+	return Request[SpotifyEmptyResponse](s, http.MethodPut, "/me/following")
 }
 
-func (s *SpotifyClient) UnfollowUsersOrArtists() (*SpotifyFollowedArtistsResponse[ArtistObject], *http.Response, error) {
-	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodDelete, "/me/following")
+func (s *SpotifyClient) UnfollowUsersOrArtists() (*SpotifyEmptyResponse, *http.Response, error) {
+	return Request[SpotifyEmptyResponse](s, http.MethodDelete, "/me/following")
 }
 
-func (s *SpotifyClient) CheckUserFollowsUsersOrArtists() (*SpotifyFollowedArtistsResponse[ArtistObject], *http.Response, error) {
-	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodGet, "/me/following/contains")
+func (s *SpotifyClient) CheckUserFollowsUsersOrArtists() (*[]bool, *http.Response, error) {
+	return Request[[]bool](s, http.MethodGet, "/me/following/contains")
 }
 
-func (s *SpotifyClient) CheckUserFollowsPlaylist(id string) (*SpotifyFollowedArtistsResponse[ArtistObject], *http.Response, error) {
-	return Request[SpotifyFollowedArtistsResponse[ArtistObject]](s, http.MethodGet, "/playlists/"+id+"/followers/contains")
+func (s *SpotifyClient) CheckUserFollowsPlaylist(id string) (*[]bool, *http.Response, error) {
+	return Request[[]bool](s, http.MethodGet, "/playlists/"+id+"/followers/contains")
 }

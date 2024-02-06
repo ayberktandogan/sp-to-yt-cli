@@ -16,11 +16,7 @@ type userTopArtistsCmd struct {
 }
 
 type userTopTracksCmd struct {
-}
-
-type userTopItemsCmd struct {
-	Artists userTopArtistsCmd `cmd:"" group:"user" help:"Get the current user's top artists based on calculated affinity."`
-	Tracks  userTopTracksCmd  `cmd:"" group:"user" help:"Get the current user's top tracks based on calculated affinity."`
+	userTopArtistsCmd
 }
 
 type userMeCmd struct {
@@ -32,31 +28,70 @@ type userProfileCmd struct {
 }
 
 type userPlaylistFollowCmd struct {
-	Id     string `arg:"" help:"Add the current user as a follower of a playlist."`
+	Id     string `arg:"" help:"The Spotify ID of the playlist."`
 	Public bool   `flag:"" help:"Defaults to true. If true the playlist will be included in user's public playlists, if false it will remain private."`
 }
 
 type userPlaylistUnfollowCmd struct {
-	Id string `arg:"" help:"Remove the current user as a follower of a playlist."`
+	Id string `arg:"" help:"The Spotify ID of the playlist."`
+}
+
+type userPlaylistCheckCmd struct {
+	Id string `arg:"" help:"The Spotify ID of the playlist."`
 }
 
 type userPlaylistCmd struct {
+	Check    userPlaylistCheckCmd    `cmd:"" help:"Check to see if one or more Spotify users are following a specified playlist."`
 	Follow   userPlaylistFollowCmd   `cmd:"" help:"Add the current user as a follower of a playlist."`
 	Unfollow userPlaylistUnfollowCmd `cmd:"" help:"Remove the current user as a follower of a playlist."`
 }
 
-type userFollowedArtistsCmd struct {
+type userArtistsFollowedCmd struct {
 	Type  string `flag:"" help:"The ID type: currently only artist is supported."`
 	After string `flag:"" help:"The last artist ID retrieved from the previous request."`
 	Limit int    `flag:"" help:"The maximum number of items to return. Default: 20. Minimum: 1. Maximum: 50."`
 }
 
+type userArtistsFollowCmd struct {
+	Ids string `flag:"" help:"A comma-separated list of the artist Spotify IDs. A maximum of 50 IDs can be sent in one request."`
+}
+
+type userFollowCmd struct {
+	Check userFollowCheckCmd `cmd:"" help:"Check to see if the current user is following one or more other Spotify users."`
+	Ids   string             `flag:"" help:"A comma-separated list of the user Spotify IDs. A maximum of 50 IDs can be sent in one request."`
+}
+
+type userFollowCheckCmd struct {
+	Ids string `flag:"" help:"A comma-separated list of the user Spotify IDs. A maximum of 50 IDs can be sent in one request."`
+}
+
+type userUnfollowCmd struct {
+	Ids string `flag:"" help:"A comma-separated list of the user Spotify IDs. A maximum of 50 IDs can be sent in one request."`
+}
+
+type userArtistsCmd struct {
+	Top      userTopArtistsCmd      `cmd:"" help:"Get the current user's top artists based on calculated affinity."`
+	Follow   userArtistsFollowCmd   `cmd:"" help:"Add the current user as a follower of one or more artists."`
+	Followed userArtistsFollowedCmd `cmd:"" group:"user" name:"followed-artists" help:"Get the current user's followed artists."`
+	Unfollow userArtistsUnfollowCmd `cmd:"" help:"Remove the current user as a follower of one or more artists."`
+}
+
+type userArtistsUnfollowCmd struct {
+	Ids string `flag:"" help:"A comma-separated list of the artist Spotify IDs. A maximum of 50 IDs can be sent in one request."`
+}
+
+type userTracksCmd struct {
+	Top userTopTracksCmd `cmd:"" group:"user" help:"Get the current user's top tracks based on calculated affinity."`
+}
+
 type userCmd struct {
-	Me              userMeCmd              `cmd:"" group:"user" name:"me" help:"Get data about logged in user"`
-	TopItems        userTopItemsCmd        `cmd:"" group:"user" name:"top" short:"t" help:"Get the current user's top artists or tracks based on calculated affinity."`
-	Playlist        userPlaylistCmd        `cmd:"" group:"user" name:"playlist" short:"p" help:"Playlist related actions"`
-	FollowedArtists userFollowedArtistsCmd `cmd:"" group:"user" name:"followed-artists" short:"f" help:"Get the current user's followed artists."`
-	Get             userProfileCmd         `cmd:"" help:"Get public profile information about a Spotify user."`
+	Artists  userArtistsCmd  `cmd:"" group:"user" name:"artists" short:"a" help:"Get data about artists"`
+	Tracks   userTracksCmd   `cmd:"" group:"user" name:"tracks" short:"t" help:"Get data about tracks"`
+	Me       userMeCmd       `cmd:"" group:"user" name:"me" help:"Get data about logged in user"`
+	Playlist userPlaylistCmd `cmd:"" group:"user" name:"playlist" short:"p" help:"Playlist related actions"`
+	Follow   userFollowCmd   `cmd:"" group:"user" name:"follow" short:"f" help:"Add the current user as a follower of one or more artists or other Spotify users."`
+	Unfollow userUnfollowCmd `cmd:"" group:"user" name:"unfollow" short:"u" help:"Remove the current user as a follower of one or more other Spotify users."`
+	Get      userProfileCmd  `cmd:"" help:"Get public profile information about a Spotify user."`
 }
 
 func (i *userProfileCmd) Run(ctx *kong.Context, clients *Clients) error {
@@ -84,6 +119,12 @@ func (i *userMeCmd) Run(clients *Clients) error {
 }
 
 func (i *userTopArtistsCmd) Run(clients *Clients) error {
+	clients.Spotify.QueryParams = map[string]string{
+		"time_range": i.TimeRange,
+		"limit":      strconv.Itoa(i.Limit),
+		"offset":     strconv.Itoa(i.Offset),
+	}
+
 	data, _, err := clients.Spotify.GetUserTopArtists()
 	if err != nil {
 		log.Fatal(err)
@@ -98,6 +139,12 @@ func (i *userTopArtistsCmd) Run(clients *Clients) error {
 }
 
 func (i *userTopTracksCmd) Run(clients *Clients) error {
+	clients.Spotify.QueryParams = map[string]string{
+		"time_range": i.TimeRange,
+		"limit":      strconv.Itoa(i.Limit),
+		"offset":     strconv.Itoa(i.Offset),
+	}
+
 	data, _, err := clients.Spotify.GetUserTopTracks()
 	if err != nil {
 		log.Fatal(err)
@@ -116,40 +163,32 @@ func (i *userPlaylistFollowCmd) Run(ctx *kong.Context, clients *Clients) error {
 		Public: i.Public,
 	}
 
-	_, res, err := clients.Spotify.FollowPlaylist(i.Id, b)
+	_, _, err := clients.Spotify.FollowPlaylist(i.Id, b)
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 
-	if res.StatusCode == 200 {
-		fmt.Println("Followed successfully.")
-	} else {
-		fmt.Println("There was a problem.")
-	}
+	fmt.Println("Followed successfully.")
 
 	return nil
 }
 
 func (i *userPlaylistUnfollowCmd) Run(ctx *kong.Context, clients *Clients) error {
-	_, res, err := clients.Spotify.UnfollowPlaylist(i.Id)
+	_, _, err := clients.Spotify.UnfollowPlaylist(i.Id)
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 
-	if res.StatusCode == 200 {
-		fmt.Println("Unfollowed successfully.")
-	} else {
-		fmt.Println("There was a problem.")
-	}
+	fmt.Println("Unfollowed successfully.")
 
 	return nil
 }
 
-func (i *userFollowedArtistsCmd) Run(clients *Clients) error {
+func (i *userArtistsFollowedCmd) Run(clients *Clients) error {
 	clients.Spotify.QueryParams = map[string]string{
-		"type":  i.Type,
+		"type":  "artist",
 		"after": i.After,
 		"limit": strconv.Itoa(i.Limit),
 	}
@@ -168,6 +207,57 @@ func (i *userFollowedArtistsCmd) Run(clients *Clients) error {
 	for idx, it := range data.Artists.Items {
 		fmt.Printf("%d:\t%s\n", idx+1, it.Name)
 	}
+
+	return nil
+}
+
+func (i *userFollowCmd) Run(clients *Clients) error {
+	clients.Spotify.QueryParams = map[string]string{
+		"type": "user",
+		"ids":  i.Ids,
+	}
+
+	_, _, err := clients.Spotify.FollowUsersOrArtists()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	fmt.Println("Followed successfully.")
+
+	return nil
+}
+
+func (i *userUnfollowCmd) Run(clients *Clients) error {
+	clients.Spotify.QueryParams = map[string]string{
+		"type": "user",
+		"ids":  i.Ids,
+	}
+
+	_, _, err := clients.Spotify.UnfollowUsersOrArtists()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	fmt.Println("Unfollowed successfully.")
+
+	return nil
+}
+
+func (i *userArtistsFollowCmd) Run(ctx *kong.Context, clients *Clients) error {
+	clients.Spotify.QueryParams = map[string]string{
+		"type": "artist",
+		"ids":  i.Ids,
+	}
+
+	_, _, err := clients.Spotify.FollowUsersOrArtists()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	fmt.Println("Followed successfully.")
 
 	return nil
 }
